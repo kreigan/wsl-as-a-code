@@ -1,0 +1,10 @@
+[project]
+name = "wsl-as-a-code"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ansible>=14.2.0",
+    "ansible-lint>=26.6.0",
+]

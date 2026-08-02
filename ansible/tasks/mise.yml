@@ -1,0 +1,38 @@
+---
+- name: Enable mise repo
+  become: true
+  ansible.builtin.command:
+    cmd: extrepo enable mise
+    creates: /etc/apt/sources.list.d/extrepo_mise.sources
+
+- name: Install mise package
+  become: true
+  ansible.builtin.apt:
+    name: mise
+    state: present
+    update_cache: true
+
+- name: Activate mise in non-interactive shells
+  become: true
+  ansible.builtin.blockinfile:
+    path: "/etc/profile.d/00-mise.sh"
+    block: |
+      # Activate mise
+      if command -v mise >/dev/null 2>&1; then
+          if [ -n "$BASH_VERSION" ]; then
+              eval "$(mise activate bash)"
+          elif [ -n "$ZSH_VERSION" ]; then
+              eval "$(mise activate zsh)"
+          fi
+      fi
+    prepend_newline: true
+    append_newline: true
+
+- name: Activate mise in interactive shells
+  become: true
+  ansible.builtin.lineinfile:
+    path: "{{ item.path }}/00-mise.sh"
+    line: command -v mise >/dev/null 2>&1 && eval "$(mise activate {{ item.shell }})"
+  loop:
+    - { path: "/etc/bash.bashrc.d", shell: "bash" }
+    - { path: "/etc/zsh/zshrc.d", shell: "zsh" }

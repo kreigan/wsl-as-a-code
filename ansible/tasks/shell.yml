@@ -1,0 +1,94 @@
+---
+- name: Configure new users home dir
+  become: true
+  ansible.builtin.file:
+    path: /etc/skel/{{ item }}
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  loop:
+    - "{{ config_dir }}"
+
+- name: Install Zsh
+  become: true
+  ansible.builtin.apt:
+    name: zsh
+
+- name: Configure shell customizations
+  become: true
+  loop:
+    - shell: bash
+      rc_file: /etc/bash.bashrc
+      sys_dir: "{{ bashrcd_sys_dir }}"
+      user_dir: "{{ bashrcd_user_dir }}"
+    - shell: zsh
+      rc_file: /etc/zsh/zshrc
+      sys_dir: "{{ zshrcd_sys_dir }}"
+      user_dir: "{{ zshrcd_user_dir }}"
+  loop_control:
+    label: "{{ item.shell }}"
+  block:
+    - name: Create system customization directory - {{ item.shell }}
+      ansible.builtin.file:
+        path: "{{ item.sys_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Configure load of system customizations for interactive shells
+      ansible.builtin.blockinfile:
+        path: "{{ item.rc_file }}"
+        block: |
+          # Load system customizations
+          if [ -d "{{ item.sys_dir }}" ]; then
+            for file in {{ item.sys_dir }}/*.{{ item.shell }}rc; do
+                [ -r "$file" ] && . "$file"
+            done
+          fi
+
+    - name: Make skeleton dir for user customizations
+      ansible.builtin.file:
+        path: /etc/skel/{{ item.user_dir }}
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Create user customization dir for existing users
+      become: true
+      block:
+        - name: Get users
+          ansible.builtin.getent:
+            database: passwd
+          register: existing_users
+
+        - name: Create user customization dir for regular users
+          ansible.builtin.file:
+            path: "{{ user.value[4] }}/{{ item.user_dir }}"
+            state: directory
+            owner: "{{ user.key }}"
+            group: "{{ user.key }}"
+            mode: "0755"
+          loop: "{{ existing_users | dict2items }}"
+          loop_control:
+            loop_var: user
+          when:
+            - user.value[1] | int >= 1000
+            - user.value[4] != '/nonexistent'
+
+    - name: Configure load of user customizations for interactive shells
+      ansible.builtin.blockinfile:
+        path: "{{ item.rc_file }}"
+        block: |
+          # Load user customizations
+          if [ -d "{{ item.user_dir }}" ]; then
+            for file in {{ item.user_dir }}/*.{{ item.shell }}rc; do
+                [ -r "$file" ] && . "$file"
+            done
+          fi
+
+- name: Apply Bash configuration
+  ansible.builtin.include_tasks: tasks/shells/bash.yml
+
+- name: Apply Zsh configuration
+  ansible.builtin.include_tasks: tasks/shells/zsh.yml

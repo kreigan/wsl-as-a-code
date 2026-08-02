@@ -1,0 +1,32 @@
+---
+- name: Gather package facts
+  ansible.builtin.package_facts:
+
+- name: Migrate to deb822 format if possible
+  ansible.builtin.command:
+    cmd: apt modernize-sources --yes
+  changed_when: true
+  when: ansible_facts.packages['apt'][0].version is version('2.9.26', '>=')
+
+- name: Update system packages
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: dist
+    autoremove: true
+    autoclean: true
+    auto_install_module_deps: true
+
+- name: Install essential packages
+  ansible.builtin.apt:
+    name:
+      - curl
+      - extrepo
+      - git
+      - iproute2
+      - mlocate
+      - moreutils
+      - socat
+      - telnet
+      - traceroute
+      - wget
+      - zip

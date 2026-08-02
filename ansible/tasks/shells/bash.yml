@@ -1,0 +1,5 @@
+---
+- name: Install Bash completion package
+  become: true
+  ansible.builtin.apt:
+    name: bash-completion

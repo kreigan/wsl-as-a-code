@@ -1,0 +1,36 @@
+---
+- name: Create WSL configuration
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ wsl_rootfs_path }}/etc/wsl.conf"
+    content: "{{ wsl_config }}"
+    mode: '0644'
+    owner: root
+    group: root
+
+- name: Configure mlocate to ignore Windows rootfs mount folder
+  when: ansible_facts.packages['mlocate'] is defined
+  become: true
+  block:
+    - name: Create /etc/updatedb.conf from template if it does not exist
+      ansible.builtin.template:
+        src: updatedb.conf.j2
+        dest: /etc/updatedb.conf
+        force: false
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: Check if WSL rootfs mount folder is in PRUNEPATHS
+      ansible.builtin.command: grep -q "^PRUNEPATHS=.*{{ wsl_rootfs_path }}" /etc/updatedb.conf
+      register: grep_output
+      changed_when: false
+      failed_when: false
+
+    - name: Add WSL rootfs mount folder to PRUNEPATHS
+      ansible.builtin.lineinfile:
+        path: /etc/updatedb.conf
+        backrefs: true
+        regexp: '^(PRUNEPATHS=".*?)(?<!\b{{ wsl_rootfs_path }}\b)"$'
+        line: '\1 {{ wsl_rootfs_path }}"'
+      when: grep_output.rc != 0

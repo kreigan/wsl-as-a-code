@@ -1,0 +1,29 @@
+---
+- name: Core system setup
+  hosts: localhost
+  become: true
+  vars:
+    ansible_python_interpreter: &python3 /usr/bin/python3
+  tasks:
+    - name: Perform system setup tasks
+      ansible.builtin.include_tasks: tasks/system.yml
+
+    - name: Configure shells
+      ansible.builtin.include_tasks: tasks/shell.yml
+
+    - name: Install and enable mise
+      ansible.builtin.include_tasks: tasks/mise.yml
+
+    - name: Configure WSL-specific tasks
+      ansible.builtin.include_tasks: tasks/wsl.yml
+
+- name: Install and configure operational packages
+  hosts: localhost
+  vars:
+    ansible_python_interpreter: *python3
+  tasks:
+    - name: Install operational packages
+      become: true
+      ansible.builtin.apt:
+        name: "{{ operational_packages }}"
+        update_cache: true
