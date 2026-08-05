@@ -93,7 +93,7 @@ pacman -Syu --noconfirm
 # --- 4. Install Ansible and prerequisites ----------------------------------------
 log "Installing Ansible and prerequisites..."
 # shellcheck disable=SC2086
-pacman -S --noconfirm --needed python ansible sudo git openssh $EXTRA_PACKAGES
+pacman -S --noconfirm --needed python ansible sudo $EXTRA_PACKAGES
 
 command -v ansible >/dev/null 2>&1 || die "Ansible was not installed successfully."
 log "Ansible ready: $(ansible --version | head -n1)"
