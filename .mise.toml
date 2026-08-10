@@ -1,3 +1,6 @@
 [tools]
 ansible = "latest"
 "pipx:ansible-lint" = "latest"
+
+[tasks]
+build = "python3 scripts/build_dist.py"

@@ -1,7 +1,7 @@
 [project]
 name = "wsl-as-a-code"
 version = "0.1.0"
-description = "Add your description here"
+description = "A quick bootstrap for WSL2 environments using Ansible"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
