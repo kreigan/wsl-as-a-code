@@ -18,7 +18,7 @@
       confirm: true
 
     - name: user_shell
-      prompt: "Choose your preferred shell (zsh|nu|bash)"
+      prompt: "Choose your preferred shell ({{ allowed_shells | join('|') }})"
       default: "zsh"
       private: false
 
@@ -37,8 +37,6 @@
       ansible.builtin.assert:
         that: user_shell in allowed_shells
         fail_msg: "Unknown shell '{{ user_shell }}'. Allowed values: {{ allowed_shells | join(', ') }}"
-      vars:
-        allowed_shells: "{{ packages.shells | map('replace', 'nushell', 'nu') | list }}"
 
     - name: Make sure it is Arch Linux
       ansible.builtin.assert:
@@ -67,9 +65,8 @@
     ansible_python_interpreter: *interpreter
 
   vars_prompt:
-    - name: need_shell_framework
+    - name: install_shell_framework
       prompt: "(bash/zsh only) Install shell framework? (Y/n)"
-      default: "y"
       private: false
 
     - name: chezmoi_repo
@@ -80,4 +77,4 @@
     - name: Run user configuration tasks
       ansible.builtin.include_tasks: tasks/bootstrap_user.yml
       vars:
-        need_shell_framework: "{{ need_shell_framework | bool }}"
+        need_shell_framework: "{{ (install_shell_framework | trim | default('y', True)) is regex('^(?i:y|yes)$') }}"

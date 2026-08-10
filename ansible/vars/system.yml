@@ -43,3 +43,5 @@ wsl_conf: |
 
   [automount]
   options = "metadata"
+
+allowed_shells: "{{ packages.shells | map('replace', 'nushell', 'nu') | list }}"
