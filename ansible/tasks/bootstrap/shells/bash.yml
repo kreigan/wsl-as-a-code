@@ -1,0 +1,21 @@
+---
+- name: Install Oh My Bash
+  when: user_shell == "bash" and need_shell_framework | bool
+  block:
+    - name: Download installation script
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh
+        dest: &tmpfile /tmp/ohmybash_install.sh
+        mode: '0755'
+    - name: Install Oh My Bash
+      ansible.builtin.command:
+        argv:
+          - bash
+          - *tmpfile
+          - --unattended
+        creates: "{{ ansible_facts['env']['HOME'] }}/.oh-my-bash"
+  always:
+    - name: Remove installation script
+      ansible.builtin.file:
+        path: *tmpfile
+        state: absent

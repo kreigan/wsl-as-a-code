@@ -1,0 +1,8 @@
+---
+- name: Run shell configuration tasks
+  ansible.builtin.include_tasks: "tasks/bootstrap/shells/{{ user_shell }}.yml"
+
+- name: Check if chezmoi is installed # noqa: command-instead-of-shell
+  ansible.builtin.shell: command -v chezmoi
+  register: chezmoi_path
+  changed_when: false

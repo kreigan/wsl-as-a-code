@@ -1,0 +1,119 @@
+---
+- name: Install packages
+  community.general.pacman:
+    name: "{{ packages.values() | flatten }}"
+
+- name: Check if Nushell is installed # noqa: command-instead-of-shell
+  ansible.builtin.shell: command -v nu
+  register: nushell_path
+  changed_when: false
+  failed_when: nushell_path.rc != 0
+
+- name: Allow Nushell to be used as a login shell
+  ansible.builtin.lineinfile:
+    path: /etc/shells
+    line: "{{ nushell_path.stdout }}"
+    state: present
+  when: nushell_path.rc == 0
+
+- name: Apply WSL configuration
+  block:
+    - name: Create /etc/wsl.conf
+      ansible.builtin.copy:
+        dest: /etc/wsl.conf
+        content: "{{ wsl_conf }}"
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: Fix binfmt
+      ansible.builtin.copy:
+        dest: /etc/binfmt.d/WSLInterop.conf
+        content: ":WSLInterop:M::MZ::/init:PF"
+        mode: '0644'
+        owner: root
+        group: root
+        attributes: +i
+
+    - name: Restart binfmt service
+      ansible.builtin.systemd:
+        name: systemd-binfmt
+        state: restarted
+
+- name: Install npiperelay in Windows
+  block:
+    - name: Make a temp directory for npiperelay
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: npiperelay
+      register: npiperelay_tempdir
+
+    - name: Download archive with npiperelay binary
+      ansible.builtin.get_url:
+        url: https://github.com/jstarks/npiperelay/releases/download/v0.1.0/npiperelay_windows_amd64.zip
+        dest: "{{ npiperelay_tempdir.path }}/npiperelay_windows_amd64.zip"
+        mode: '0644'
+
+    - name: Unzip npiperelay binary
+      ansible.builtin.unarchive:
+        src: "{{ npiperelay_tempdir.path }}/npiperelay_windows_amd64.zip"
+        dest: "{{ npiperelay_tempdir.path }}/"
+        remote_src: true
+
+    - name: Get Windows user profile path
+      ansible.builtin.command: /mnt/c/Windows/System32/whoami.exe
+      register: whoami
+      changed_when: false
+
+    - name: Save Windows user name
+      ansible.builtin.set_fact:
+        windows_user_name: "{{ whoami.stdout | regex_replace('^.*[\\\\/]', '') }}"
+
+    - name: Create bin directory in Windows user profile
+      ansible.builtin.file:
+        path: "/mnt/c/Users/{{ windows_user_name }}/bin"
+        state: directory
+        mode: '0755'
+      register: bin_dir
+
+    - name: Copy npiperelay binary to Windows
+      ansible.builtin.copy:
+        src: "{{ npiperelay_tempdir.path }}/npiperelay.exe"
+        dest: "{{ bin_dir.path }}/npiperelay.exe"
+        mode: '0755'
+      register: npiperelay
+  always:
+    - name: Remove temp directory for npiperelay
+      ansible.builtin.file:
+        path: "{{ npiperelay_tempdir.path }}"
+        state: absent
+
+- name: Set up access to Windows pipelines
+  block:
+    - name: Make sure new users get .ssh directory
+      ansible.builtin.file:
+        path: /etc/skel/.ssh
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Place activation script for Windows pipelines in /etc/profile.d
+      ansible.builtin.copy:
+        dest: /etc/profile.d/npiperelay.sh
+        content: |
+          export SSH_AUTH_SOCK="$HOME/.ssh/agent.sock"
+          (
+            set -eu
+            piperelay=(setsid socat "UNIX-LISTEN:$SSH_AUTH_SOCK,fork" "EXEC:{{ npiperelay_bin }} -ei -s //./pipe/openssh-ssh-agent,nofork")
+            if ! pgrep --full --exact --uid=${UID} "${piperelay[*]}" >/dev/null
+            then
+              rm -f "$SSH_AUTH_SOCK"
+              ("${piperelay[@]}" &) >/dev/null
+            fi
+          )
+        mode: '0755'
+        owner: root
+        group: root
+      vars:
+        npiperelay_bin: "{{ npiperelay.dest }}"

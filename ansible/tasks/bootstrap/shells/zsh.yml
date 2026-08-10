@@ -1,0 +1,21 @@
+---
+- name: Install Oh My Zsh
+  when: user_shell == "zsh" and need_shell_framework | bool
+  block:
+    - name: Download installation script
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+        dest: &tmpfile /tmp/ohmyzsh_install.sh
+        mode: '0755'
+    - name: Install Oh My Zsh
+      ansible.builtin.command:
+        argv:
+          - sh
+          - *tmpfile
+          - --unattended
+        creates: "{{ ansible_facts['env']['HOME'] }}/.oh-my-zsh"
+  always:
+    - name: Remove installation script
+      ansible.builtin.file:
+        path: *tmpfile
+        state: absent

@@ -1,0 +1,45 @@
+packages:
+  essential_packages:
+    - base-devel
+    - bash-completion
+    - chezmoi
+    - curl
+    - fd
+    - git
+    - inetutils
+    - iproute2
+    - less
+    - man-db
+    - man-pages
+    - mise
+    - moreutils
+    - ripgrep
+    - rsync
+    - socat
+    - unzip
+    - uv
+    - vim
+    - wget
+    - zip
+
+  shells:
+    - bash
+    - nushell
+    - zsh
+
+  operational_packages:
+    - dos2unix
+    - jq
+    - pgcli
+    - pgformatter
+    - postgresql-docs
+    - postgresql-libs
+    - tree
+    - yq
+
+wsl_conf: |
+  [boot]
+  systemd=true
+
+  [automount]
+  options = "metadata"
