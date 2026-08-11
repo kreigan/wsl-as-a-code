@@ -1,6 +1,12 @@
 ---
+- name: Check if Oh My Bash is installed
+  ansible.builtin.stat:
+    path: &omb_path "{{ ansible_facts['env']['HOME'] }}/.oh-my-bash"
+  register: omb_path
+  changed_when: false
+
 - name: Install Oh My Bash
-  when: user_shell == "bash" and need_shell_framework | bool
+  when: user_shell == "bash" and need_shell_framework and not omb_path.stat.exists
   block:
     - name: Download installation script
       ansible.builtin.get_url:
@@ -13,7 +19,7 @@
           - bash
           - *tmpfile
           - --unattended
-        creates: "{{ ansible_facts['env']['HOME'] }}/.oh-my-bash"
+        creates: *omb_path
   always:
     - name: Remove installation script
       ansible.builtin.file:
