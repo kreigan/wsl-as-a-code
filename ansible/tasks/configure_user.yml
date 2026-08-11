@@ -14,6 +14,13 @@
     password: "{{ user_password_hash }}"
     shell: "{{ shell_path.stdout }}"
 
+- name: Add user to docker group if Docker is installed
+  ansible.builtin.user:
+    name: "{{ user_name }}"
+    groups: docker
+    append: true
+  when: "'docker' in ansible_facts['packages']"
+
 - name: Configure sudoers for the WSL user
   ansible.builtin.copy:
     dest: "/etc/sudoers.d/{{ user_name }}"

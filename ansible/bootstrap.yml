@@ -7,6 +7,10 @@
     ansible_python_interpreter: &interpreter /usr/bin/python3
   vars_files:
     - vars/main.yml
+  vars_prompt:
+    - name: install_docker
+      prompt: "Install Docker Engine? (Y/n)"
+      private: false
   tasks:
     - name: Make sure it is Arch Linux
       ansible.builtin.assert:
@@ -15,6 +19,8 @@
 
     - name: Perform system setup tasks
       ansible.builtin.include_tasks: tasks/setup_system.yml
+      vars:
+        need_docker: "{{ (install_docker | trim | default('y', True)) is regex('^(?i:y|yes)$') }}"
 
 - name: Configure WSL user
   hosts: *host
@@ -54,6 +60,10 @@
       ansible.builtin.assert:
         that: user_shell in allowed_shells
         fail_msg: "Unknown shell '{{ user_shell }}'. Allowed values: {{ allowed_shells | join(', ') }}"
+
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+        manager: pacman
 
     - name: Configure WSL user
       ansible.builtin.include_tasks: tasks/configure_user.yml

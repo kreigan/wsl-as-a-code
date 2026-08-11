@@ -1,7 +1,25 @@
 ---
 - name: Install packages
   community.general.pacman:
-    name: "{{ packages.values() | flatten }}"
+    name: "{{ pkg_list | difference(excluded) }}"
+  vars:
+    pkg_list: "{{ packages.values() | flatten | unique }}"
+    excluded: >-
+      {{
+        (need_docker | ternary([], ['docker', 'docker-buildx', 'docker-compose']))
+      }}
+
+- name: Enable and start services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop: "{{ services | difference(excluded) }}"
+  vars:
+    excluded: >-
+      {{
+        (need_docker | ternary([], ['docker']))
+      }}
 
 - name: Allow shells
   block:

@@ -4,6 +4,9 @@ packages:
     - bash-completion
     - chezmoi
     - curl
+    - docker
+    - docker-buildx
+    - docker-compose
     - fd
     - git
     - inetutils
@@ -36,6 +39,9 @@ packages:
     - postgresql-libs
     - tree
     - yq
+
+services:
+  - docker
 
 wsl_conf: |
   [boot]
