@@ -1,0 +1,72 @@
+- name: Configure WSL user
+  hosts: &host localhost
+  become: true
+  tags: [user, configure]
+  vars_files:
+    - vars/main.yml
+  vars_prompt:
+    - name: user_name
+      prompt: "Your new WSL user name"
+      private: false
+
+    - name: user_password
+      prompt: "password"
+      unsafe: true
+      private: true
+      confirm: true
+
+    - name: user_shell
+      prompt: "Choose your preferred shell ({{ allowed_shells | join('|') }})"
+      default: "zsh"
+      private: false
+  tasks:
+    - name: Validate user name is not empty
+      tags: bootstrap
+      ansible.builtin.assert:
+        that: user_name | length > 0
+        fail_msg: "User name cannot be empty."
+
+    - name: Validate user password hash is not empty
+      ansible.builtin.assert:
+        that: user_password | length > 0
+        fail_msg: "User password cannot be empty."
+
+    - name: Validate user shell choice
+      tags: bootstrap
+      ansible.builtin.assert:
+        that: user_shell in allowed_shells
+        fail_msg: "Unknown shell '{{ user_shell }}'. Allowed values: {{ allowed_shells | join(', ') }}"
+
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+        manager: pacman
+
+    - name: Configure WSL user
+      ansible.builtin.include_tasks: tasks/configure_user.yml
+      vars:
+        user_password_hash: "{{ user_password | password_hash(salt='a87b4e16') }}"
+
+    - name: Save user facts
+      tags: bootstrap
+      ansible.builtin.set_fact:
+        user_name: "{{ user_name }}"
+        user_shell: "{{ user_shell }}"
+
+- name: Bootstrap user profile
+  hosts: *host
+  become: true
+  become_user: "{{ user_name }}"
+  tags: [user, bootstrap]
+  vars_prompt:
+    - name: install_shell_framework
+      prompt: "(bash/zsh only) Install shell framework? (Y/n)"
+      private: false
+
+    - name: chezmoi_repo
+      prompt: "chezmoi repository path (local or remote) or empty to skip"
+      private: false
+  tasks:
+    - name: Run user configuration tasks
+      ansible.builtin.include_tasks: tasks/bootstrap_profile.yml
+      vars:
+        need_shell_framework: "{{ (install_shell_framework | trim | default('y', True)) is regex('^(?i:y|yes)$') }}"

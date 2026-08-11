@@ -1,0 +1,20 @@
+- name: Core system setup
+  hosts: localhost
+  become: true
+  tags: system
+  vars_files:
+    - vars/main.yml
+  vars_prompt:
+    - name: install_docker
+      prompt: "Install Docker Engine? (Y/n)"
+      private: false
+  tasks:
+    - name: Make sure it is Arch Linux
+      ansible.builtin.assert:
+        that: ansible_facts["distribution"] == "Archlinux"
+        fail_msg: "This playbook is only intended for Arch Linux."
+
+    - name: Perform system setup tasks
+      ansible.builtin.include_tasks: tasks/setup_system.yml
+      vars:
+        need_docker: "{{ (install_docker | trim | default('y', True)) is regex('^(?i:y|yes)$') }}"

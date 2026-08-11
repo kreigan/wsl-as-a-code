@@ -1,3 +1,5 @@
+ansible_python_interpreter: /usr/bin/python3
+
 packages:
   essential_packages:
     - base-devel
