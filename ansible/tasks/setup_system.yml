@@ -42,7 +42,7 @@
     - name: Create /etc/wsl.conf
       ansible.builtin.copy:
         dest: /etc/wsl.conf
-        content: "{{ wsl_conf }}"
+        content: "{{ wsl_conf ~ '\n' }}"
         mode: '0644'
         owner: root
         group: root
