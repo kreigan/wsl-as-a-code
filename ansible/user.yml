@@ -6,7 +6,7 @@
     - vars/main.yml
   vars_prompt:
     - name: user_name
-      prompt: "Your new WSL user name"
+      prompt: "\nYour new WSL user name"
       private: false
 
     - name: user_password
@@ -59,7 +59,7 @@
   tags: [user, bootstrap]
   vars_prompt:
     - name: install_shell_framework
-      prompt: "(bash/zsh only) Install shell framework? (Y/n)"
+      prompt: "\n(bash/zsh only) Install shell framework? (Y/n)"
       private: false
 
     - name: chezmoi_repo

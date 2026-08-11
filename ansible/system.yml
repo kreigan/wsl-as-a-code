@@ -6,7 +6,7 @@
     - vars/main.yml
   vars_prompt:
     - name: install_docker
-      prompt: "Install Docker Engine? (Y/n)"
+      prompt: "\nInstall Docker Engine? (Y/n)"
       private: false
   tasks:
     - name: Make sure it is Arch Linux
