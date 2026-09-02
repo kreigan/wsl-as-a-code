@@ -58,15 +58,9 @@
   become_user: "{{ user_name }}"
   tags: [user, bootstrap]
   vars_prompt:
-    - name: install_shell_framework
-      prompt: "\n(bash/zsh only) Install shell framework? (Y/n)"
-      private: false
-
     - name: chezmoi_repo
       prompt: "chezmoi repository path (local or remote) or empty to skip"
       private: false
   tasks:
     - name: Run user configuration tasks
       ansible.builtin.include_tasks: tasks/bootstrap_profile.yml
-      vars:
-        need_shell_framework: "{{ (install_shell_framework | trim | default('y', True)) is regex('^(?i:y|yes)$') }}"
