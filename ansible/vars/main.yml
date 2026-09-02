@@ -15,6 +15,7 @@ packages:
     - man-db
     - man-pages
     - mise
+    - moor
     - moreutils
     - ripgrep
     - rsync
