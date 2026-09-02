@@ -19,6 +19,7 @@ packages:
     - ripgrep
     - rsync
     - socat
+    - starship
     - unzip
     - uv
     - vim
