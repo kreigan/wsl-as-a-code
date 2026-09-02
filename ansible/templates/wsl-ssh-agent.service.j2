@@ -5,7 +5,7 @@ Documentation=https://github.com/jstarks/npiperelay
 [Service]
 Type=simple
 Environment="SSH_AUTH_SOCK=%h/.ssh/agent.sock"
-ExecStartPre=/bin/sh -c 'mkdir -p %h/.ssh && rm -f ${SSH_AUTH_SOCK}'
+ExecStartPre=/bin/sh -c 'mkdir -p %h/.ssh && rm -rf ${SSH_AUTH_SOCK}'
 ExecStart=/usr/bin/socat UNIX-LISTEN:%h/.ssh/agent.sock,fork EXEC:"{{ npiperelay_bin }} -ei -s //./pipe/openssh-ssh-agent",nofork
 Restart=always
 RestartSec=2
