@@ -77,5 +77,5 @@
       ansible.builtin.copy:
         dest: /etc/profile.d/wsl-ssh-agent.sh
         content: |
-          export SSH_AUTH_SOCK="$HOME/.ssh/agent.sock"
+          export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/ssh-agent.sock"
         mode: '0755'
