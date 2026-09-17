@@ -61,5 +61,14 @@
         name: systemd-binfmt
         state: restarted
 
+- name: Create symlinks to significant Windows user folders
+  ansible.builtin.file:
+    path: "{{ item.dst }}"
+    src: "{{ item.src }}"
+    state: link
+  loop: "{{ wsl_links }}"
+  loop_control:
+    label: "{{ item.dst }}"
+
 - name: Setup systemd service for npiperelay
   ansible.builtin.include_tasks: tasks/npiperelay.yml

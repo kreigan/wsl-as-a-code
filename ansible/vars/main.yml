@@ -55,8 +55,19 @@ wsl_conf: |
   [automount]
   options = "metadata"
 
+# For this to work, run this in PowerShell and start a new WSL session:
+#   setx WSLENV "USERPROFILE/p:APPDATA/p:OneDrive/p"
 win_user_profile: "{{ lookup('ansible.builtin.env', 'USERPROFILE') }}"
+win_appdata: "{{ lookup('ansible.builtin.env', 'APPDATA') }}"
+win_onedrive_folder: "{{ lookup('ansible.builtin.env', 'OneDrive') }}"
 
 npiperelay_bin: "{{ win_user_profile }}/bin/npiperelay.exe"
+
+wsl_links:
+  - { src: "{{ win_user_profile }}", dst: "/wusr" }
+  - { src: "{{ win_appdata }}", dst: "/appdata" }
+  - { src: "{{ win_onedrive_folder }}", dst: "/1drv" }
+  - { src: "/wusr/Downloads", dst: "/downloads" }
+  - { src: "/1drv/Documents", dst: "/documents" }
 
 allowed_shells: "{{ packages.shells | map('replace', 'nushell', 'nu') | list }}"
