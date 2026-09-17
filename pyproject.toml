@@ -4,7 +4,11 @@ version = "0.1.0"
 description = "A quick bootstrap for WSL2 environments using Ansible"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
-    "ansible>=14.2.0",
-    "ansible-lint>=26.6.0",
+
+[dependency-groups]
+dev = [
+    "ansible-dev-tools>=26.8.0",
+    "docker>=7.2.0",
+    "pytest>=9.1.1",
+    "testcontainers>=4.15.0",
 ]

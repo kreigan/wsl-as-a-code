@@ -1,0 +1,40 @@
+[vars]
+pkg_name = "wsl-ansible"
+pkg_version = "0.1.0"
+
+[tools]
+python = "3.12"
+shellcheck = "latest"
+uv = "latest"
+
+[settings]
+idiomatic_version_file_enable_tools = ["python"]
+python.uv_venv_auto = "source"
+
+[tasks]
+lint-shell = "shellcheck bootstrap.sh"
+lint-ansible = "ansible-lint ansible/"
+
+[tasks.init]
+run = [
+  "mise install",
+  "mise exec -- uv sync"
+]
+
+[tasks.lint]
+description = "Run all linting tasks"
+depends = ["lint-shell", "lint-ansible"]
+
+[tasks.test]
+description = "Run all tests"
+run = ["echo 'No tests defined yet'"]
+
+[tasks.publish]
+run = [
+  "rm -rf dist",
+  "mkdir -p dist",
+  "git archive -o dist/{{ vars.pkg_name }}_v_{{ vars.pkg_version }}.tar.gz HEAD:ansible/",
+  "cp bootstrap.sh dist/"
+]
+sources = [ "ansible/", "bootstrap.sh" ]
+outputs = [ "dist" ]
