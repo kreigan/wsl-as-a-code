@@ -61,5 +61,5 @@
         name: systemd-binfmt
         state: restarted
 
-- name: Install npiperelay in Windows
+- name: Setup systemd service for npiperelay
   ansible.builtin.include_tasks: tasks/npiperelay.yml

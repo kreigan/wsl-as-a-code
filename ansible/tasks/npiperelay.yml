@@ -1,81 +1,24 @@
-- name: Get Windows user profile path
-  ansible.builtin.command: /mnt/c/Windows/System32/whoami.exe
-  register: whoami
-  changed_when: false
+- name: Deploy global user systemd service template for SSH agent relay
+  ansible.builtin.template:
+    src: wsl-ssh-agent.service.j2
+    dest: /etc/systemd/user/wsl-ssh-agent.service
+    mode: '0644'
+    owner: root
+    group: root
 
-- name: Set npiperelay binary path
-  vars:
-    windows_user_name: "{{ whoami.stdout | regex_replace('^.*[\\\\/]', '') }}"
-  ansible.builtin.set_fact:
-    npiperelay_bin: "/mnt/c/Users/{{ windows_user_name }}/bin/npiperelay.exe"
+- name: Reload systemd daemon to recognize new service
+  ansible.builtin.systemd:
+    daemon_reload: true
 
-- name: Check if npiperelay is already installed
-  ansible.builtin.stat:
-    path: "{{ npiperelay_bin }}"
-  register: npiperelay_stat
+- name: Enable service globally for all users
+  ansible.builtin.systemd:
+    name: wsl-ssh-agent.service
+    enabled: true
+    scope: global
 
-- name: Install npiperelay in Windows
-  when: not npiperelay_stat.stat.exists
-  block:
-    - name: Make a temp directory for npiperelay
-      ansible.builtin.tempfile:
-        state: directory
-        suffix: npiperelay
-      register: npiperelay_tempdir
-
-    - name: Download archive with npiperelay binary
-      ansible.builtin.get_url:
-        url: https://github.com/jstarks/npiperelay/releases/download/v0.1.0/npiperelay_windows_amd64.zip
-        dest: "{{ npiperelay_tempdir.path }}/npiperelay_windows_amd64.zip"
-        mode: '0644'
-
-    - name: Unzip npiperelay binary
-      ansible.builtin.unarchive:
-        src: "{{ npiperelay_tempdir.path }}/npiperelay_windows_amd64.zip"
-        dest: "{{ npiperelay_tempdir.path }}/"
-        remote_src: true
-
-    - name: Create bin directory in Windows user profile
-      ansible.builtin.file:
-        path: "{{ npiperelay_bin | dirname }}"
-        state: directory
-        mode: '0755'
-
-    - name: Copy npiperelay binary to Windows
-      ansible.builtin.copy:
-        src: "{{ npiperelay_tempdir.path }}/npiperelay.exe"
-        dest: "{{ npiperelay_bin }}"
-        mode: '0755'
-        remote_src: true
-  always:
-    - name: Remove temp directory for npiperelay
-      ansible.builtin.file:
-        path: "{{ npiperelay_tempdir.path }}"
-        state: absent
-
-- name: Set up access to Windows pipelines
-  block:
-    - name: Deploy global user systemd service template for SSH agent relay
-      ansible.builtin.template:
-        src: wsl-ssh-agent.service.j2
-        dest: /etc/systemd/user/wsl-ssh-agent.service
-        mode: '0644'
-        owner: root
-        group: root
-
-    - name: Reload systemd daemon to recognize new service
-      ansible.builtin.systemd:
-        daemon_reload: true
-
-    - name: Enable service globally for all users
-      ansible.builtin.systemd:
-        name: wsl-ssh-agent.service
-        enabled: true
-        scope: global
-
-    - name: Add environment variable to user profile for SSH agent relay
-      ansible.builtin.copy:
-        dest: /etc/profile.d/wsl-ssh-agent.sh
-        content: |
-          export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/ssh-agent.sock"
-        mode: '0755'
+- name: Add environment variable to user profile for SSH agent relay
+  ansible.builtin.copy:
+    dest: /etc/profile.d/wsl-ssh-agent.sh
+    content: |
+      export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/ssh-agent.sock"
+    mode: '0755'

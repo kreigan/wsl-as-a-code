@@ -55,4 +55,8 @@ wsl_conf: |
   [automount]
   options = "metadata"
 
+win_user_profile: "{{ lookup('ansible.builtin.env', 'USERPROFILE') }}"
+
+npiperelay_bin: "{{ win_user_profile }}/bin/npiperelay.exe"
+
 allowed_shells: "{{ packages.shells | map('replace', 'nushell', 'nu') | list }}"
