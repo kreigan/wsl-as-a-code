@@ -55,12 +55,7 @@
 - name: Bootstrap user profile
   hosts: *host
   become: true
-  become_user: "{{ user_name }}"
   tags: [user, bootstrap]
-  vars_prompt:
-    - name: chezmoi_repo
-      prompt: "chezmoi repository path (local or remote) or empty to skip"
-      private: false
   tasks:
     - name: Run user configuration tasks
       ansible.builtin.include_tasks: tasks/bootstrap_profile.yml
