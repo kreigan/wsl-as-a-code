@@ -12,7 +12,7 @@ idiomatic_version_file_enable_tools = ["python"]
 python.uv_venv_auto = "source"
 
 [tasks]
-lint-shell = "shellcheck bootstrap.sh"
+lint-shell = "shellcheck scripts/bootstrap.sh"
 lint-ansible = "ansible-lint ansible/"
 
 [tasks.init]
@@ -34,7 +34,7 @@ run = [
   "rm -rf dist",
   "mkdir -p dist",
   "git archive -o dist/{{ vars.pkg_name }}_v_{{ vars.pkg_version }}.tar.gz HEAD:ansible/",
-  "cp bootstrap.sh dist/"
+  "cp scripts/bootstrap.sh dist/"
 ]
-sources = [ "ansible/", "bootstrap.sh" ]
+sources = [ "ansible/", "scripts/bootstrap.sh" ]
 outputs = [ "dist" ]

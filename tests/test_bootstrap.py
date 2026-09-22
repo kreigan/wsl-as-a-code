@@ -45,7 +45,7 @@ def arch():
        "bash", "-c",
        "echo -e '[options]\nXferCommand = /usr/bin/curl --connect-timeout=20 --retry=3 -sfkZLC - -o %o %u' >> /etc/pacman.conf"
      ])
-     container.copy_into_container(Path("bootstrap.sh"), bootstrap_script, 777)
+     container.copy_into_container(Path("scripts", "bootstrap.sh"), bootstrap_script, 777)
      yield container
 
 
