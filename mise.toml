@@ -1,5 +1,6 @@
 [vars]
-pkg_name = "wsl-ansible"
+pkg_name = "wsl-bootstrapper"
+ansible_archive_name = "ansible"
 pkg_version = "0.1.0"
 
 [tools]
@@ -33,8 +34,9 @@ run = ["echo 'No tests defined yet'"]
 run = [
   "rm -rf dist",
   "mkdir -p dist",
-  "git archive -o dist/{{ vars.pkg_name }}_v_{{ vars.pkg_version }}.tar.gz HEAD:ansible/",
-  "cp scripts/bootstrap.sh dist/"
+  "git archive -o dist/{{ vars.ansible_archive_name }}.tar.gz HEAD:ansible/",
+  "cp scripts/bootstrap.sh dist/",
+  "(cd dist && zip {{ vars.pkg_name }}.v{{ vars.pkg_version }}.zip ./*)"
 ]
 sources = [ "ansible/", "scripts/bootstrap.sh" ]
 outputs = [ "dist" ]
