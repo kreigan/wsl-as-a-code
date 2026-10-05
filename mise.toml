@@ -13,8 +13,9 @@ idiomatic_version_file_enable_tools = ["python"]
 python.uv_venv_auto = "source"
 
 [tasks]
-lint-shell = "shellcheck scripts/bootstrap.sh"
+lint-shell = "shellcheck scripts/execute.sh"
 lint-ansible = "ansible-lint ansible/"
+test = "pytest -s tests"
 
 [tasks.init]
 run = [
@@ -26,17 +27,13 @@ run = [
 description = "Run all linting tasks"
 depends = ["lint-shell", "lint-ansible"]
 
-[tasks.test]
-description = "Run all tests"
-run = ["echo 'No tests defined yet'"]
-
 [tasks.publish]
 run = [
   "rm -rf dist",
   "mkdir -p dist",
   "git archive -o dist/{{ vars.ansible_archive_name }}.tar.gz HEAD:ansible/",
-  "cp scripts/bootstrap.sh dist/",
+  "cp scripts/execute.sh dist/",
   "(cd dist && zip {{ vars.pkg_name }}.v{{ vars.pkg_version }}.zip ./*)"
 ]
-sources = [ "ansible/", "scripts/bootstrap.sh" ]
+sources = [ "ansible/", "scripts/execute.sh" ]
 outputs = [ "dist" ]

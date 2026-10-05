@@ -7,7 +7,7 @@ import pytest
 import sys
 
 
-bootstrap_script = "/root/bootstrap.sh"
+bootstrap_script = "/root/execute.sh"
 
 
 class ArchLinuxContainer(DockerContainer):
@@ -45,30 +45,46 @@ def arch():
        "bash", "-c",
        "echo -e '[options]\nXferCommand = /usr/bin/curl --connect-timeout=20 --retry=3 -sfkZLC - -o %o %u' >> /etc/pacman.conf"
      ])
-     container.copy_into_container(Path("scripts", "bootstrap.sh"), bootstrap_script, 777)
+     container.copy_into_container(Path("scripts", "execute.sh"), bootstrap_script, 777)
      yield container
 
 
-def test_bootstrap_no_run(arch: ArchLinuxContainer) -> None:
-  exit_code = arch.exec_stream(["bash", bootstrap_script, "--no-run"])
+def test_bootstrap(arch: ArchLinuxContainer) -> None:
+  exit_code = arch.exec_stream(["bash", bootstrap_script, "bootstrap"])
   assert exit_code == 0
 
-def test_bootstrap_fail_without_playbook(arch: ArchLinuxContainer) -> None:
-  exit_code = arch.exec_stream(["bash", bootstrap_script, "--no-upgrade"])
-  assert exit_code != 0
+def test_bootstrap_run_playbook(arch: ArchLinuxContainer, tmp_path: Path) -> None:
+  playbook = tmp_path / "test_playbook.yml"
+  playbook.write_text(
+    """---
+- name: Test playbook
+  hosts: localhost
+  gather_facts: false
+  vars:
+    ansible_python_interpreter: /usr/sbin/python3
+  tasks:
+    - name: Create test file
+      ansible.builtin.copy:
+        content: "{{ test_file_content }}"
+        dest: "{{ test_file_path }}"
+        mode: '0644'
+""",
+    encoding="utf-8",
+  )
 
-def test_bootstrap_run_playbook(arch: ArchLinuxContainer) -> None:
   playbook_path = "/root/test_playbook.yml"
-  arch.copy_into_container(Path("test_playbook.yml"), playbook_path, 644)
+  arch.copy_into_container(playbook, playbook_path, 644)
 
   test_file_content = "This is a test"
   test_file_path = "/tmp/test-bootstrap-script.txt"
+  
+  arch.exec_stream(["bash", bootstrap_script, "bootstrap"])
   exit_code = arch.exec_stream([
     "bash",
     bootstrap_script,
-    "--no-upgrade",
-    "-p", playbook_path,
-    "-v", f"test_file_path={test_file_path}",
-    "-v", f"test_file_content={test_file_content}"
+    "playbook", playbook_path,
+    "--extra-vars", f"test_file_path={test_file_path}",
+    "--extra-vars", f"test_file_content={test_file_content}"
   ])
+  
   assert exit_code == 0

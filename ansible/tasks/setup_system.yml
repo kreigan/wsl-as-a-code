@@ -1,13 +1,33 @@
 ---
-- name: Install packages
-  community.general.pacman:
-    name: "{{ pkg_list | difference(excluded) }}"
-  vars:
-    pkg_list: "{{ packages.values() | flatten | unique }}"
-    excluded: >-
-      {{
-        (need_docker | ternary([], ['docker', 'docker-buildx', 'docker-compose']))
-      }}
+- name: Configure locale
+  block:
+    - name: Generate locale
+      community.general.locale_gen:
+        name: "{{ locale }}"
+        state: present
+
+    - name: Set locale environment variable
+      ansible.builtin.lineinfile:
+        path: /etc/environment
+        line: "LANG={{ locale }}"
+        state: present
+
+- name: Package management
+  block:
+    - name: Upgrade system packages
+      community.general.pacman:
+        update_cache: true
+        upgrade: true
+
+    - name: Install packages
+      community.general.pacman:
+        name: "{{ pkg_list | difference(excluded) }}"
+      vars:
+        pkg_list: "{{ packages.values() | flatten | unique }}"
+        excluded: >-
+          {{
+            (need_docker | ternary([], ['docker', 'docker-buildx', 'docker-compose']))
+          }}
 
 - name: Enable and start services
   ansible.builtin.systemd:
