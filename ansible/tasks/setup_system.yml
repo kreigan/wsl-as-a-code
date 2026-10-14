@@ -92,3 +92,14 @@
 
 - name: Setup systemd service for npiperelay
   ansible.builtin.include_tasks: tasks/npiperelay.yml
+  when: npiperelay_bin | length > 0
+
+- name: Make a link to 1Password
+  ansible.builtin.file:
+    path: "/usr/local/bin/op"
+    src: "{{ onepassword_bin }}"
+    state: link
+    owner: root
+    group: root
+    mode: '0755'
+  when: onepassword_bin | length > 0

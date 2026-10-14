@@ -63,8 +63,6 @@ win_user_profile: "{{ lookup('ansible.builtin.env', 'USERPROFILE') }}"
 win_appdata: "{{ lookup('ansible.builtin.env', 'APPDATA') }}"
 win_onedrive_folder: "{{ lookup('ansible.builtin.env', 'OneDrive') }}"
 
-npiperelay_bin: "{{ win_user_profile }}/bin/npiperelay.exe"
-
 wsl_links:
   - { src: "{{ win_user_profile }}", dst: "/wusr" }
   - { src: "{{ win_appdata }}", dst: "/appdata" }

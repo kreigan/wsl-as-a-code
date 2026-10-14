@@ -18,3 +18,5 @@
       ansible.builtin.include_tasks: tasks/setup_system.yml
       vars:
         need_docker: "{{ (install_docker | trim | default('y', True)) is regex('^(?i:y|yes)$') }}"
+        npiperelay_bin: "{{ ansible_facts['env']['BOOTSTRAP_NPIPERELAY_PATH'] | default('') }}"
+        onepassword_bin: "{{ ansible_facts['env']['BOOTSTRAP_OP_PATH'] | default('') }}"
