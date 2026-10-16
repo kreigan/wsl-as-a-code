@@ -62,10 +62,10 @@ wsl_conf: |
   options = "{{ wsl_mount_options | join(',') }}"
 
 # For this to work, run this in PowerShell and start a new WSL session:
-#   setx WSLENV "USERPROFILE/p:APPDATA/p:OneDrive/p"
-win_user_profile: "{{ lookup('ansible.builtin.env', 'USERPROFILE') }}"
-win_appdata: "{{ lookup('ansible.builtin.env', 'APPDATA') }}"
-win_onedrive_folder: "{{ lookup('ansible.builtin.env', 'OneDrive') }}"
+#   set WSLENV "USERPROFILE/p:APPDATA/p:OneDrive/p"
+win_user_profile: "{{ ansible_facts['env']['USERPROFILE'] }}"
+win_appdata: "{{ ansible_facts['env']['APPDATA'] }}"
+win_onedrive_folder: "{{ ansible_facts['env']['OneDrive'] }}"
 
 wsl_links:
   - { src: "{{ win_user_profile }}", dst: "/wusr" }
