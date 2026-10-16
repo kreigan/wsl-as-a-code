@@ -50,12 +50,16 @@ packages:
 services:
   - docker
 
+wsl_mount_options:
+  - metadata
+  - uid={{ user_uid | default(1000) }}
+
 wsl_conf: |
   [boot]
   systemd=true
 
   [automount]
-  options = "metadata"
+  options = "{{ wsl_mount_options | join(',') }}"
 
 # For this to work, run this in PowerShell and start a new WSL session:
 #   setx WSLENV "USERPROFILE/p:APPDATA/p:OneDrive/p"

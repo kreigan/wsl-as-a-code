@@ -8,6 +8,7 @@
 - name: Create a new WSL user
   ansible.builtin.user:
     name: "{{ user_name }}"
+    uid: "{{ user_uid }}"
     groups: wheel
     append: true
     create_home: true
