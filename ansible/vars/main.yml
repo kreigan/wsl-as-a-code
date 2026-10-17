@@ -57,6 +57,7 @@ wsl_mount_options:
 wsl_conf: |
   [boot]
   systemd=true
+  initTimeout = 30000
 
   [automount]
   options = "{{ wsl_mount_options | join(',') }}"
