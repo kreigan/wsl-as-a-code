@@ -30,8 +30,11 @@ depends = ["lint-ansible"]
 run = [
   "rm -rf dist",
   "mkdir -p dist",
-  "git archive -o dist/{{ vars.ansible_archive_name }}.tar.gz HEAD:ansible/",
-  "(cd dist && zip {{ vars.pkg_name }}.v{{ vars.pkg_version }}.zip ./*)"
+  "git ls-files -z --cached --others --exclude-standard --full-name -- ansible | tar -czf dist/{{ vars.ansible_archive_name }}.tar.gz --null -T - --transform 's,^ansible/,,'",
+  """
+  v="{{ vars.pkg_version }}"
+  [ -n "$RELEASE" ] || v="$v-dev+$(git rev-parse --short HEAD)$(git diff --quiet HEAD -- ansible || echo .dirty)"
+  (cd dist && zip "{{ vars.pkg_name }}.v$v.zip" {{ vars.ansible_archive_name }}.tar.gz)
+  """
 ]
-sources = [ "ansible/" ]
 outputs = [ "dist" ]
