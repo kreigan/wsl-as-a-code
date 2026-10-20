@@ -76,4 +76,6 @@ wsl_links:
   - { src: "/wusr/Downloads", dst: "/downloads" }
   - { src: "/1drv/Documents", dst: "/documents" }
 
+tunneller_url: "https://raw.githubusercontent.com/kreigan/tunneller/refs/heads/main/tunctl"
+
 allowed_shells: "{{ packages.shells | map('replace', 'nushell', 'nu') | list }}"
