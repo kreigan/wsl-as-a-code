@@ -396,7 +396,7 @@ set -euo pipefail
 pacman-key --init
 pacman-key --populate archlinux
 pacman -Sy --noconfirm archlinux-keyring
-pacman -Sy --noconfirm --needed python ansible sudo
+pacman -Syu --noconfirm --needed python ansible sudo
 '@
 Invoke-Quiet { wsl -d $DistroName -u root --exec bash -c $prepareBootstrapCmd }
 Complete-Step
