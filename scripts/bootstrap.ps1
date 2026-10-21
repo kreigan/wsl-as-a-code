@@ -80,19 +80,58 @@ function Resolve-FilePath {
   )
   $resolved = Resolve-Path $Path -ErrorAction SilentlyContinue
   if (-not $resolved -or -not (Test-Path $resolved.Path -PathType Leaf)) {
-    Write-Error "[✖] '$Path' does not exist or is not a file"
+    Write-Error "'$Path' does not exist or is not a file"
   }
   Write-Verbose "Resolved $Path to $($resolved.Path)"
   return $resolved.Path
 }
 
+# Top-level progress: one entry per bootstrap stage.
+function Start-Step {
+  param([Parameter(Mandatory)][string]$Name)
+
+  $script:StepIndex++
+  $script:StepName = $Name
+  Write-Progress -Id 0 -Activity "WSL bootstrap" `
+    -Status "Step $script:StepIndex of ${script:StepTotal}: $Name" `
+    -PercentComplete (($script:StepIndex - 1) / $script:StepTotal * 100)
+  Write-Host "$($PSStyle.Foreground.Cyan)[$script:StepIndex/$script:StepTotal]$($PSStyle.Reset) $Name"
+}
+
+function Complete-Step {
+  param([string]$Message = "Done")
+  Write-Host "$($PSStyle.Foreground.Green)  ✔$($PSStyle.Reset) $Message`n"
+}
+
+# Runs a noisy command, showing only its latest output line as progress.
+# Full output goes to the verbose stream, and is dumped if the command fails.
+function Invoke-Quiet {
+  param([Parameter(Mandatory)][scriptblock]$Command)
+
+  $lines = [System.Collections.Generic.List[string]]::new()
+  try {
+    & $Command 2>&1 | ForEach-Object {
+      $line = "$_".Trim()
+      if (-not $line) { return }
+      $lines.Add($line)
+      Write-Verbose $line
+      Write-Progress -Id 1 -ParentId 0 -Activity $script:StepName -Status $line
+    }
+  }
+  catch {
+    $lines | ForEach-Object { Write-Host "$($PSStyle.Foreground.BrightBlack)  $_$($PSStyle.Reset)" }
+    throw
+  }
+  finally {
+    Write-Progress -Id 1 -Activity $script:StepName -Completed
+  }
+}
+
 function Expand-ArchiveInWSL {
   param(
     [Parameter(Mandatory)]
-    [string]$ArchivePath
+    [string]$FullPath
   )
-
-  $fullPath = Resolve-FilePath $ArchivePath
 
   $script = @'
 set -euo pipefail
@@ -101,7 +140,7 @@ tempDir="$(mktemp -d /dev/shm/unpacked.XXXXXX)"
 bsdtar -xf "$(wslpath -u "$1")" -C "$tempDir"
 echo "$tempDir"
 '@
-  return wsl -d $DistroName -u root --exec bash -c $script _ $fullPath
+  return wsl -d $DistroName -u root --exec bash -c $script _ $FullPath
 }
 
 function Invoke-AnsiblePlaybook {
@@ -129,6 +168,7 @@ function Invoke-AnsiblePlaybook {
     
     Write-Verbose "Unpacking Ansible archive to a temporary folder in WSL"
     $tmpWslPath = Expand-ArchiveInWSL $ansibleArchivePath
+    Write-Verbose "Unpacked to $tmpWslPath"
 
     $cmd = 'cd "{0}" && ansible-playbook -i localhost, --connection=local ''{1}.yml'' -e ''{2}''' -f @(
       $tmpWslPath,
@@ -148,9 +188,8 @@ function Invoke-AnsiblePlaybook {
   }
 
   if ($TerminateDistro) {
-    Write-Host "[→] Stopping WSL distribution: $DistroName"
+    Write-Verbose "Stopping WSL distribution: $DistroName"
     wsl --terminate $DistroName
-    Write-Host "[✔] WSL distribution stopped."
   }
 }
 
@@ -193,32 +232,35 @@ function Get-ChezmoiInitArgs {
 $PSNativeCommandUseErrorActionPreference = $true
 $ErrorActionPreference = "Stop"
 
-Write-Host "[→] Started bootstrap script`n"
+$script:StepIndex = 0
+$script:StepName = ""
+$script:StepTotal = 6 + ($SkipChezmoiInit ? 0 : 2) + ($SkipInstallWslDistro ? 0 : 1)
+
+Start-Step "Checking prerequisites"
 
 if (-not (Get-Command wsl -ErrorAction SilentlyContinue)) {
-  Write-Error "[✖] 'wsl' command not found. Is WSL installed?"
-}  
+  Write-Error "'wsl' command not found. Is WSL installed?"
+}
 
 $ansibleArchivePath = Resolve-FilePath "ansible.tar.gz"
 if (-not $SkipChezmoiInit -and -not $DotfilesUrl) {
   $chezmoiArchivePath = Resolve-FilePath "dotfiles.zip"
 }
 
-Write-Host "[✔] All file paths are valid."
-
 # https://github.com/microsoft/WSL/issues/4607
 $env:WSL_UTF8 = 1
 $distroInstalled = $DistroName -in (wsl -l -q)
-Write-Verbose "WSL distribution already installed: $distroInstalled"
+Write-Verbose "WSL distribution '$DistroName' already installed: $distroInstalled"
 
 if (-not $SkipInstallWslDistro -and $distroInstalled) {
-  Write-Error "[✖] WSL distribution '$DistroName' is already installed. Re-run with -SkipInstallWslDistro flag."
+  Write-Error "WSL distribution '$DistroName' is already installed. Re-run with -SkipInstallWslDistro flag."
 }
 elseif ($SkipInstallWslDistro -and -not $distroInstalled) {
-  Write-Error "[✖] WSL distribution '$DistroName' is not installed but -SkipInstallWslDistro is set."
+  Write-Error "WSL distribution '$DistroName' is not installed but -SkipInstallWslDistro is set."
 }
+Complete-Step "Files found, WSL available"
 
-Write-Host "[→] Setting up user env variables for XDG base directories"
+Start-Step "Setting XDG base directory variables"
 $xdgDefaults = @{
   XDG_CONFIG_HOME = Join-Path $HOME ".config"
   XDG_DATA_HOME   = Join-Path $HOME ".local" "share"
@@ -233,7 +275,7 @@ foreach ($var in $xdgDefaults.Keys) {
     Set-UserEnv $var $val
   }
 }
-Write-Host "[✔] User environment variables for XDG base directories are set."
+Complete-Step
 
 
 ########################
@@ -241,36 +283,33 @@ Write-Host "[✔] User environment variables for XDG base directories are set."
 ########################
 
 
-Write-Host "[→] Installing the required Windows packages`n"
+Start-Step "Installing Windows packages"
 
-Set-PSResourceRepository -Name PSGallery -Trusted
-Install-PSResource -Name Microsoft.WinGet.Client -Quiet -WarningAction SilentlyContinue
-Import-Module Microsoft.WinGet.Client > $null
+# Silence module discovery/import noise even when -Verbose is on
+Set-PSResourceRepository -Name PSGallery -Trusted -Verbose:$false
+Install-PSResource -Name Microsoft.WinGet.Client -Quiet -WarningAction SilentlyContinue -Verbose:$false
+Import-Module Microsoft.WinGet.Client -Verbose:$false
 
-Write-Verbose "Checking if chezmoi is installed"
-if (-not (Get-WinGetPackage -Id twpayne.chezmoi)) {
-  Install-WinGetPackage -Id twpayne.chezmoi
+$packages = @("twpayne.chezmoi")
+if (-not $NotUse1PasswordSshAgent) {
+  $packages += "AgileBits.1Password.CLI", "albertony.npiperelay"
 }
 
-if (-not $NotUse1PasswordSshAgent) {
-  Write-Verbose "Checking if 1Password CLI is installed"
-  if (-not (Get-WinGetPackage -Id AgileBits.1Password.CLI)) {
-    Install-WinGetPackage -Id AgileBits.1Password.CLI
+foreach ($id in $packages) {
+  if (Get-WinGetPackage -Id $id -Verbose:$false) {
+    Write-Verbose "$id is already installed"
+  } else {
+    Write-Host "  Installing $id"
+    Install-WinGetPackage -Id $id -Verbose:$false | Out-Null
   }
-
-  Write-Verbose "Checking if npiperelay is installed"
-  if (-not (Get-WinGetPackage -Id albertony.npiperelay)) {
-    Install-WinGetPackage -Id albertony.npiperelay
-  }
-}  
-
-Write-Host "[✔] Required packages are installed."
+}
 
 Write-Verbose "Refreshing PATH environment variable in the current process"
 $env:Path = (
   [System.Environment]::GetEnvironmentVariable('Path', 'Machine'),
   [System.Environment]::GetEnvironmentVariable('Path', 'User')
 ) -join ';'
+Complete-Step "Packages: $($packages -join ', ')"
 
 
 ##############################
@@ -279,15 +318,14 @@ $env:Path = (
 
 
 if (-not $SkipChezmoiInit) {
-  Write-Host "[→] Running chezmoi initialization in Windows`n"
+  Start-Step "Initializing chezmoi in Windows"
 
   $chezmoiSourceDir = chezmoi source-path
   if ([string]::IsNullOrWhiteSpace($chezmoiSourceDir)) {
-    Write-Error "[✖] chezmoi returned an empty source path"
+    Write-Error "chezmoi returned an empty source path"
   }
   Write-Verbose "chezmoi source directory: $chezmoiSourceDir"
 
-  Write-Host "[→] Checking if chezmoi source directory is empty"
   if (Get-ChildItem $chezmoiSourceDir -Force -Exclude '.git' -ErrorAction Ignore) {
     $confirm = Read-Host "chezmoi source directory '$chezmoiSourceDir' is not empty. Clear it? (y/N)"
 
@@ -298,16 +336,16 @@ if (-not $SkipChezmoiInit) {
 
       try {
         Compress-Archive -Path $chezmoiSourceDir -DestinationPath $backupPath -Force
-        Write-Host "[✔] chezmoi source folder backup created: $backupPath"
+        Write-Host "  Backup of the source directory: $backupPath"
       }
       catch {
-        Write-Error "[✖] Failed to create chezmoi source folder backup: $_"
+        Write-Error "Failed to back up the chezmoi source directory: $_"
       }
 
       & chezmoi purge --force 2>&1
     
     } else {
-      Write-Error "[✖] Aborted. chezmoi source folder is not empty. Clear it before retrying."
+      Write-Error "Aborted. The chezmoi source directory is not empty. Clear it before retrying."
     }
   }
 
@@ -338,7 +376,7 @@ if (-not $SkipChezmoiInit) {
   }
 
   & chezmoi init --apply @chezmoiInitArgs 2>&1
-  Write-Host "`n[✔] chezmoi initialization completed.`n"
+  Complete-Step "chezmoi applied"
 }
 
 
@@ -348,9 +386,10 @@ if (-not $SkipChezmoiInit) {
 
 
 if (-not $SkipInstallWslDistro) {
-  Write-Host "[→] Installing WSL distribution"
-  & wsl --install archlinux --no-launch --name $DistroName 2>&1
-  & wsl --set-default $DistroName 2>&1
+  Start-Step "Installing WSL distribution '$DistroName'"
+  Invoke-Quiet { wsl --install archlinux --no-launch --name $DistroName }
+  wsl --set-default $DistroName
+  Complete-Step
 }
 
 
@@ -359,15 +398,16 @@ if (-not $SkipInstallWslDistro) {
 ########################
 
 
-Write-Host "[→] Preparing to bootstrap WSL distribution '$DistroName'"
+Start-Step "Preparing '$DistroName' (keyring, python, ansible)"
 $prepareBootstrapCmd = @'
 set -euo pipefail
-pacman-key --init > /dev/null 2>&1
-pacman-key --populate archlinux > /dev/null 2>&1
-pacman -Sy --noconfirm archlinux-keyring > /dev/null 2>&1
+pacman-key --init
+pacman-key --populate archlinux
+pacman -Sy --noconfirm archlinux-keyring
 pacman -Sy --noconfirm --needed python ansible sudo
 '@
-wsl -d $DistroName -u root --exec bash -c $prepareBootstrapCmd
+Invoke-Quiet { wsl -d $DistroName -u root --exec bash -c $prepareBootstrapCmd }
+Complete-Step
 
 $playbookEnv = @(
   "USERPROFILE/up",
@@ -386,13 +426,13 @@ if (-not $NotUse1PasswordSshAgent) {
   )
 }
 
-Write-Host "[→] Bootstrapping WSL system in '$DistroName'"
+Start-Step "Bootstrapping WSL system in '$DistroName'"
 Invoke-AnsiblePlaybook "system" `
   -PlaybookVars @{ "install_docker" = $SkipInstallDocker ? "no" : "yes" } `
   -PlaybookEnv $playbookEnv `
   -TerminateDistro
 
-Write-Host "[✔] WSL system successfully bootstrapped.`n"
+Complete-Step "System playbook finished"
 
 
 ######################
@@ -410,7 +450,7 @@ if ($UserPassword) {
   $playbookVars["user_password"] = [System.Net.NetworkCredential]::new('', $UserPassword).Password
 }
 
-Write-Host "[→] Bootstrapping user '$UserName' in '$DistroName'`n"
+Start-Step "Bootstrapping user '$UserName' in '$DistroName'"
 
 try {
   Invoke-AnsiblePlaybook "user" `
@@ -422,7 +462,7 @@ finally {
   $playbookVars["user_password"] = $null
 }
 
-Write-Host "[✔] WSL user successfully bootstrapped.`n"
+Complete-Step "User playbook finished"
 
 
 ##########################
@@ -449,7 +489,10 @@ fi
 exec chezmoi init --apply "$@"
 '@
 
-  Write-Host "[→] Initializing chezmoi for '$UserName' in '$DistroName'`n"
+  Start-Step "Initializing chezmoi in WSL for '$UserName'"
   wsl -d $DistroName -u $UserName --exec bash -lc $chezmoiWslScript _ @chezmoiInitArgs
-  Write-Host "[✔] chezmoi initialization in WSL completed.`n"
+  Complete-Step "chezmoi applied"
 }
+
+Write-Progress -Id 0 -Activity "WSL bootstrap" -Completed
+Write-Host "$($PSStyle.Foreground.Green)Bootstrap completed.$($PSStyle.Reset)"
