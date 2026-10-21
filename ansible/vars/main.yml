@@ -3,50 +3,34 @@ locale: "en_US.UTF-8"
 packages:
   essential_packages:
     - base-devel
-    - bash-completion
     - chezmoi
     - curl
     - docker
     - docker-buildx
     - docker-compose
-    - fd
     - git
     - inetutils
     - iproute2
+    - jq
     - less
     - man-db
     - man-pages
     - mise
-    - moor
     - moreutils
     - openssh
-    - ripgrep
     - rsync
     - socat
-    - starship
     - unzip
     - uv
     - vim
     - wget
+    - yq
     - zip
-    - zsh-autosuggestions
-    - zsh-completions
-    - zsh-syntax-highlighting
 
   shells:
     - bash
     - nushell
     - zsh
-
-  operational_packages:
-    - dos2unix
-    - jq
-    - pgcli
-    - pgformatter
-    - postgresql-docs
-    - postgresql-libs
-    - tree
-    - yq
 
 services:
   - docker
