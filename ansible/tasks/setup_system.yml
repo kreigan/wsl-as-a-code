@@ -24,10 +24,7 @@
         name: "{{ pkg_list | difference(excluded) }}"
       vars:
         pkg_list: "{{ packages.values() | flatten | unique }}"
-        excluded: >-
-          {{
-            (need_docker | ternary([], ['docker', 'docker-buildx', 'docker-compose']))
-          }}
+        excluded: "{{ (need_docker | ternary([], packages.docker)) }}"
 
 - name: Enable and start services
   ansible.builtin.systemd:

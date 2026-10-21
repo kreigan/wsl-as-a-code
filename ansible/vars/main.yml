@@ -5,9 +5,6 @@ packages:
     - base-devel
     - chezmoi
     - curl
-    - docker
-    - docker-buildx
-    - docker-compose
     - git
     - inetutils
     - iproute2
@@ -26,6 +23,11 @@ packages:
     - wget
     - yq
     - zip
+
+  docker:
+    - docker
+    - docker-buildx
+    - docker-compose
 
   shells:
     - bash
