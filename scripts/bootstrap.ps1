@@ -30,8 +30,8 @@ param(
   [Parameter(HelpMessage = "Do not install Docker Engine in WSL.")]
   [switch]$SkipInstallDocker,
 
-  [Parameter(HelpMessage = "The user UID for the WSL distribution.")]
-  [int]$Uid = 1000,
+  [Parameter(HelpMessage = "Customize the user UID for the WSL distribution.")]
+  [int]$Uid,
 
   [Parameter(HelpMessage = "The user name for the WSL distribution.")]
   [ValidateNotNullOrWhiteSpace()]
@@ -416,6 +416,9 @@ $playbookEnv = @(
   "OneDrive/up"
 )
 
+$playbookVars = @{ install_docker = $SkipInstallDocker ? "no" : "yes" }
+if ($Uid) { $playbookVars["user_uid"] = $Uid }
+
 if (-not $NotUse1PasswordSshAgent) {
   $env:BOOTSTRAP_NPIPERELAY_PATH = Get-Command npiperelay -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
   $env:BOOTSTRAP_OP_PATH = Get-Command op -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
@@ -428,7 +431,7 @@ if (-not $NotUse1PasswordSshAgent) {
 
 Start-Step "Bootstrapping WSL system in '$DistroName'"
 Invoke-AnsiblePlaybook "system" `
-  -PlaybookVars @{ "install_docker" = $SkipInstallDocker ? "no" : "yes" } `
+  -PlaybookVars $playbookVars `
   -PlaybookEnv $playbookEnv `
   -TerminateDistro
 
@@ -440,11 +443,8 @@ Complete-Step "System playbook finished"
 ######################
 
 
-$playbookVars = @{
-  user_uid   = $Uid
-  user_name  = $UserName
-  user_shell = $UserShell
-}
+$playbookVars["user_name"] = $UserName
+$playbookVars["user_shell"] = $UserShell
 
 if ($UserPassword) {
   $playbookVars["user_password"] = [System.Net.NetworkCredential]::new('', $UserPassword).Password
