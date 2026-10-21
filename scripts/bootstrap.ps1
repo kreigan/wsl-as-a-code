@@ -52,10 +52,6 @@ param(
   [ValidateNotNullOrWhiteSpace()]
   [string]$GitUserEmail,
   
-  [Parameter(HelpMessage = "Git signing key.")]
-  [ValidateNotNullOrWhiteSpace()]
-  [string]$GitSignKey,
-
   [Parameter(HelpMessage = "Install developer tools in WSL.")]
   [switch]$InstallDevTools
 )
@@ -355,10 +351,6 @@ if (-not $SkipChezmoiInit) {
   if ($GitUserName) { $stringPrompts["Git name for commits"] = $GitUserName }
   if ($GitUserEmail) { $stringPrompts["Git email address"] = $GitUserEmail }
   if ($InstallDevTools) { $boolPrompts["Install development tools? [y/N]"] = $true }
-  if ($GitSignKey) {
-    $boolPrompts["Enable Git commit signing? [y/N]"] = $true
-    $stringPrompts["Git signing key"] = $GitSignKey
-  }
 
   # Same arguments are used for Windows and WSL runs
   $chezmoiInitArgs = Get-ChezmoiInitArgs `
