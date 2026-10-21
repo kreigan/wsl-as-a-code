@@ -4,6 +4,7 @@ ansible_archive_name = "ansible"
 pkg_version = "0.1.0"
 
 [tools]
+powershell = "latest"
 python = "3.12"
 shellcheck = "latest"
 uv = "latest"
