@@ -14,8 +14,11 @@ param(
   [ValidateNotNullOrWhiteSpace()]
   [string]$DotfilesUrl,
   
-  [Parameter(HelpMessage = "Do not initialize chezmoi in Windows and WSL.")]
-  [switch]$SkipChezmoiInit,
+  [Parameter(HelpMessage = "Skip running chezmoi in Windows.")]
+  [switch]$SkipWinChezmoiInit,
+  
+  [Parameter(HelpMessage = "Skip running chezmoi in WSL.")]
+  [switch]$SkipWslChezmoiInit,
   
   [Parameter(HelpMessage = "Disable configuration for the 1Password SSH agent.")]
   [switch]$NotUse1PasswordSshAgent,
@@ -230,7 +233,10 @@ $ErrorActionPreference = "Stop"
 
 $script:StepIndex = 0
 $script:StepName = ""
-$script:StepTotal = 6 + ($SkipChezmoiInit ? 0 : 2) + ($SkipInstallWslDistro ? 0 : 1)
+$script:StepTotal = 6
+$script:StepTotal += $SkipWinChezmoiInit ? 0 : 1
+$script:StepTotal += $SkipWslChezmoiInit ? 0 : 1
+$script:StepTotal += $SkipInstallWslDistro ? 0 : 1
 
 Start-Step "Checking prerequisites"
 
@@ -273,6 +279,25 @@ foreach ($var in $xdgDefaults.Keys) {
 }
 Complete-Step
 
+if (-not $SkipWinChezmoiInit -or -not $SkipWslChezmoiInit) {
+  $stringPrompts = [ordered]@{}
+  $boolPrompts = [ordered]@{}
+
+  if ($GitUserName) { $stringPrompts["Git name for commits"] = $GitUserName }
+  if ($GitUserEmail) { $stringPrompts["Git email address"] = $GitUserEmail }
+  if ($InstallDevTools) { $boolPrompts["Install development tools? [y/N]"] = $true }
+
+  # Same arguments are used for Windows and WSL runs
+  $chezmoiInitArgs = Get-ChezmoiInitArgs `
+    -RepoUrl $DotfilesUrl `
+    -StringPrompts $stringPrompts `
+    -BoolPrompts $boolPrompts
+
+    # log args suitable for copy-paste
+  $displayArgs = $chezmoiInitArgs | ForEach-Object { $_ -match '\s' ? "'$_'" : $_ }
+  Write-Verbose "chezmoi arguments: $($displayArgs -join ' ')`n"
+}
+
 
 ########################
 ##  INSTALL PACKAGES  ##
@@ -313,7 +338,7 @@ Complete-Step "Packages: $($packages -join ', ')"
 ##############################
 
 
-if (-not $SkipChezmoiInit) {
+if (-not $SkipWinChezmoiInit) {
   Start-Step "Initializing chezmoi in Windows"
 
   $chezmoiSourceDir = chezmoi source-path
@@ -344,24 +369,7 @@ if (-not $SkipChezmoiInit) {
       Write-Error "Aborted. The chezmoi source directory is not empty. Clear it before retrying."
     }
   }
-
-  $stringPrompts = [ordered]@{}
-  $boolPrompts = [ordered]@{}
-
-  if ($GitUserName) { $stringPrompts["Git name for commits"] = $GitUserName }
-  if ($GitUserEmail) { $stringPrompts["Git email address"] = $GitUserEmail }
-  if ($InstallDevTools) { $boolPrompts["Install development tools? [y/N]"] = $true }
-
-  # Same arguments are used for Windows and WSL runs
-  $chezmoiInitArgs = Get-ChezmoiInitArgs `
-    -RepoUrl $DotfilesUrl `
-    -StringPrompts $stringPrompts `
-    -BoolPrompts $boolPrompts
-
-  # log args suitable for copy-paste
-  $displayArgs = $chezmoiInitArgs | ForEach-Object { $_ -match '\s' ? "'$_'" : $_ }
-  Write-Verbose "Initializing chezmoi with arguments: $($displayArgs -join ' ')`n"
-
+  
   if ($chezmoiArchivePath) {
     Expand-Archive -LiteralPath $chezmoiArchivePath -DestinationPath $chezmoiSourceDir -Force
     New-Item -ItemType Directory -Path (Join-Path $chezmoiSourceDir ".git") | Out-Null
@@ -462,7 +470,7 @@ Complete-Step "User playbook finished"
 ##########################
 
 
-if (-not $SkipChezmoiInit) {
+if (-not $SkipWslChezmoiInit) {
   if (-not $DotfilesUrl) {
     $env:BOOTSTRAP_DOTFILES_PATH = $chezmoiArchivePath
     $env:WSLENV = "BOOTSTRAP_DOTFILES_PATH/up"
