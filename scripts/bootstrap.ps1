@@ -374,8 +374,8 @@ if (-not $SkipWinChezmoiInit) {
     Expand-Archive -LiteralPath $chezmoiArchivePath -DestinationPath $chezmoiSourceDir -Force
     New-Item -ItemType Directory -Path (Join-Path $chezmoiSourceDir ".git") | Out-Null
   }
-
-  & chezmoi init --apply @chezmoiInitArgs 2>&1
+  
+  & chezmoi init @chezmoiInitArgs --apply 2>&1
   Complete-Step "chezmoi applied"
 }
 
@@ -486,7 +486,7 @@ if [ -n "${BOOTSTRAP_DOTFILES_PATH:-}" ]; then
   mkdir -p "$src/.git"
   bsdtar -xf "$BOOTSTRAP_DOTFILES_PATH" -C "$src"
 fi
-exec chezmoi init --apply "$@"
+exec chezmoi init "$@" --apply
 '@
 
   Start-Step "Initializing chezmoi in WSL for '$UserName'"
