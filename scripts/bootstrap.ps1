@@ -20,8 +20,8 @@ param(
   [Parameter(HelpMessage = "Skip running chezmoi in WSL.")]
   [switch]$SkipWslChezmoiInit,
   
-  [Parameter(HelpMessage = "Disable configuration for the 1Password SSH agent.")]
-  [switch]$NotUse1PasswordSshAgent,
+  [Parameter(HelpMessage = "Enable configuration for the 1Password SSH agent.")]
+  [switch]$Use1PasswordSshAgent,
 
   [Parameter(HelpMessage = "Skip the installation of the WSL distribution.")]
   [switch]$SkipInstallWslDistro,
@@ -30,8 +30,8 @@ param(
   [ValidateNotNullOrWhiteSpace()]
   [string]$DistroName = "ArchLinux",
 
-  [Parameter(HelpMessage = "Do not install Docker Engine in WSL.")]
-  [switch]$SkipInstallDocker,
+  [Parameter(HelpMessage = "Use Docker Desktop instead of installing Docker Engine in WSL.")]
+  [switch]$UseDockerDesktop,
 
   [Parameter(HelpMessage = "Customize the user UID for the WSL distribution.")]
   [int]$Uid,
@@ -312,7 +312,7 @@ Install-PSResource -Name Microsoft.WinGet.Client -Quiet -WarningAction SilentlyC
 Import-Module Microsoft.WinGet.Client -Verbose:$false
 
 $packages = @("twpayne.chezmoi")
-if (-not $NotUse1PasswordSshAgent) {
+if ($Use1PasswordSshAgent) {
   $packages += "AgileBits.1Password.CLI", "albertony.npiperelay"
 }
 
@@ -416,10 +416,10 @@ $playbookEnv = @(
   "OneDrive/up"
 )
 
-$playbookVars = @{ install_docker = $SkipInstallDocker ? "no" : "yes" }
+$playbookVars = @{ install_docker = $UseDockerDesktop ? "no" : "yes" }
 if ($Uid) { $playbookVars["user_uid"] = $Uid }
 
-if (-not $NotUse1PasswordSshAgent) {
+if ($Use1PasswordSshAgent) {
   $env:BOOTSTRAP_NPIPERELAY_PATH = Get-Command npiperelay -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
   $env:BOOTSTRAP_OP_PATH = Get-Command op -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
 
