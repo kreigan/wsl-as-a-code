@@ -480,7 +480,8 @@ set -euo pipefail
 if [ -n "${BOOTSTRAP_DOTFILES_PATH:-}" ]; then
   src="$(chezmoi source-path)"
   if find "$src" -mindepth 1 | read; then
-    echo "$src is not empty, bootstrap aborted."
+    echo "$src is not empty, bootstrap will be aborted."
+    echo "Make sure $src is empty and run the bootstrap again."
     exit 1
   fi
   mkdir -p "$src/.git"
