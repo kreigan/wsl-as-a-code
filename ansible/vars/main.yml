@@ -37,9 +37,11 @@ packages:
 services:
   - docker
 
+user_uid: 1000
+
 wsl_mount_options:
   - metadata
-  - uid={{ user_uid | default(1000) }}
+  - uid={{ user_uid }}
 
 wsl_conf: |
   [boot]
