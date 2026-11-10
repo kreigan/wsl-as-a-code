@@ -40,7 +40,7 @@ param(
   [ValidateNotNullOrWhiteSpace()]
   [string]$UserName = "wsl",
 
-  [Parameter(HelpMessage = "WSL user password.")]
+  [Parameter(HelpMessage = "WSL user password. Prompted securely if omitted.")]
   [ValidateNotNullOrWhiteSpace()]
   [SecureString]$UserPassword,
 
@@ -249,6 +249,14 @@ if (-not $SkipChezmoiInit -and -not $DotfilesUrl) {
   $chezmoiArchivePath = Resolve-FilePath "dotfiles.zip"
 }
 
+if (-not $PSBoundParameters.ContainsKey("UserPassword")) {
+  $UserPassword = Read-Host "Password for WSL user '$UserName'" -AsSecureString
+}
+
+if (-not $UserPassword -or $UserPassword.Length -eq 0) {
+  throw "WSL user password cannot be empty."
+}
+
 # https://github.com/microsoft/WSL/issues/4607
 $env:WSL_UTF8 = 1
 $distroInstalled = $DistroName -in (wsl -l -q)
@@ -448,10 +456,7 @@ Complete-Step "System playbook finished"
 
 $playbookVars["user_name"] = $UserName
 $playbookVars["user_shell"] = $UserShell
-
-if ($UserPassword) {
-  $playbookVars["user_password"] = [System.Net.NetworkCredential]::new('', $UserPassword).Password
-}
+$playbookVars["user_password"] = [System.Net.NetworkCredential]::new('', $UserPassword).Password
 
 Start-Step "Bootstrapping user '$UserName' in '$DistroName'"
 
