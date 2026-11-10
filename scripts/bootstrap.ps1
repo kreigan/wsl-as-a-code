@@ -285,7 +285,7 @@ if (-not $SkipWinChezmoiInit -or -not $SkipWslChezmoiInit) {
 
   if ($GitUserName) { $stringPrompts["Git name for commits"] = $GitUserName }
   if ($GitUserEmail) { $stringPrompts["Git email address"] = $GitUserEmail }
-  if ($InstallDevTools) { $boolPrompts["Install development tools? [y/N]"] = $true }
+  if ($InstallDevTools) { $boolPrompts["Install development tools [y/N]"] = $true }
 
   # Same arguments are used for Windows and WSL runs
   $chezmoiInitArgs = Get-ChezmoiInitArgs `
