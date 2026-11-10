@@ -10,16 +10,6 @@ Starts the bootstrap process, isn't this clear?
 
 [CmdletBinding(DefaultParameterSetName = "Path")]
 param(
-  [Parameter(HelpMessage = "The URL of a chezmoi repository.")]
-  [ValidateNotNullOrWhiteSpace()]
-  [string]$DotfilesUrl,
-  
-  [Parameter(HelpMessage = "Skip running chezmoi in Windows.")]
-  [switch]$SkipWinChezmoiInit,
-  
-  [Parameter(HelpMessage = "Skip running chezmoi in WSL.")]
-  [switch]$SkipWslChezmoiInit,
-  
   [Parameter(HelpMessage = "Enable configuration for the 1Password SSH agent.")]
   [switch]$Use1PasswordSshAgent,
 
@@ -46,6 +36,17 @@ param(
 
   [ValidateSet("bash", "zsh", "nu")]
   [string]$UserShell = "zsh",
+  
+  [Parameter(HelpMessage = "The URL of a chezmoi repository to use instead of local 'dotfiles.zip' file.")]
+  [ValidateNotNullOrWhiteSpace()]
+  [string]$DotfilesUrl,
+
+  [Parameter(HelpMessage = "A target for chezmoi init")]
+  [ValidateSet("All", "Win", "Wsl", "None")]
+  [string]$ChezmoiTarget = "All",
+
+  [Parameter(HelpMessage = "Do not apply on chezmoi init")]
+  [switch]$ChezmoiNoApplyOnInit,
 
   [Parameter(HelpMessage = "Git user name.")]
   [ValidateNotNullOrWhiteSpace()]
@@ -194,7 +195,6 @@ function Invoke-AnsiblePlaybook {
 
 function Get-ChezmoiInitArgs {
   param(
-    [string]$RepoUrl,
     [System.Collections.IDictionary]$StringPrompts = @{},
     [System.Collections.IDictionary]$BoolPrompts = @{}
   )
@@ -209,7 +209,6 @@ function Get-ChezmoiInitArgs {
   }
 
   $initArgs = @()
-  if ($RepoUrl) { $initArgs += $RepoUrl }
   if ($StringPrompts.Count) { $initArgs += "--promptString", (& $toCsv $StringPrompts.GetEnumerator()) }
   if ($BoolPrompts.Count) {
     $bools = [ordered]@{}
@@ -234,8 +233,13 @@ $ErrorActionPreference = "Stop"
 $script:StepIndex = 0
 $script:StepName = ""
 $script:StepTotal = 6
-$script:StepTotal += $SkipWinChezmoiInit ? 0 : 1
-$script:StepTotal += $SkipWslChezmoiInit ? 0 : 1
+
+$runChezmoiInit = $ChezmoiTarget -ne "None"
+if ($runChezmoiInit) {
+  Write-Verbose "chezmoi initialization needed"
+  $script:StepTotal += ($ChezmoiTarget -eq "All") ? 2 : 1
+}
+
 $script:StepTotal += $SkipInstallWslDistro ? 0 : 1
 
 Start-Step "Checking prerequisites"
@@ -246,8 +250,7 @@ if (-not (Get-Command wsl -ErrorAction SilentlyContinue)) {
 
 $ansibleArchivePath = Resolve-FilePath "ansible.tar.gz"
 
-$SkipChezmoiInit = $SkipWinChezmoiInit -and $SkipWslChezmoiInit
-if (-not $SkipChezmoiInit -and -not $DotfilesUrl) {
+if ($runChezmoiInit -and -not $DotfilesUrl) {
   $chezmoiArchivePath = Resolve-FilePath "dotfiles.zip"
 }
 
@@ -289,7 +292,7 @@ foreach ($var in $xdgDefaults.Keys) {
 }
 Complete-Step
 
-if (-not $SkipWinChezmoiInit -or -not $SkipWslChezmoiInit) {
+if ($runChezmoiInit) {
   $stringPrompts = [ordered]@{}
   $boolPrompts = [ordered]@{}
 
@@ -299,9 +302,11 @@ if (-not $SkipWinChezmoiInit -or -not $SkipWslChezmoiInit) {
 
   # Same arguments are used for Windows and WSL runs
   $chezmoiInitArgs = Get-ChezmoiInitArgs `
-    -RepoUrl $DotfilesUrl `
     -StringPrompts $stringPrompts `
     -BoolPrompts $boolPrompts
+
+  if ($DotfilesUrl) { $chezmoiInitArgs += $DotfilesUrl }
+  if (-not $ChezmoiNoApplyOnInit) { $chezmoiInitArgs += "--apply" }
 
     # log args suitable for copy-paste
   $displayArgs = $chezmoiInitArgs | ForEach-Object { $_ -match '\s' ? "'$_'" : $_ }
@@ -351,7 +356,7 @@ Complete-Step "Packages: $($packages -join ', ')"
 ##############################
 
 
-if (-not $SkipWinChezmoiInit) {
+if ($ChezmoiTarget -in "All","Windows") {
   Start-Step "Initializing chezmoi in Windows"
 
   $chezmoiSourceDir = chezmoi source-path
@@ -388,8 +393,8 @@ if (-not $SkipWinChezmoiInit) {
     New-Item -ItemType Directory -Path (Join-Path $chezmoiSourceDir ".git") | Out-Null
   }
   
-  & chezmoi init @chezmoiInitArgs --apply 2>&1
-  Complete-Step "chezmoi applied"
+  & chezmoi init @chezmoiInitArgs 2>&1
+  Complete-Step "chezmoi initialized in Windows"
 }
 
 
@@ -480,7 +485,7 @@ Complete-Step "User playbook finished"
 ##########################
 
 
-if (-not $SkipWslChezmoiInit) {
+if ($ChezmoiTarget -in "All","Wsl") {
   if (-not $DotfilesUrl) {
     $env:BOOTSTRAP_DOTFILES_PATH = $chezmoiArchivePath
     $env:WSLENV = "BOOTSTRAP_DOTFILES_PATH/up"
@@ -497,12 +502,12 @@ if [ -n "${BOOTSTRAP_DOTFILES_PATH:-}" ]; then
   mkdir -p "$src/.git"
   bsdtar -xf "$BOOTSTRAP_DOTFILES_PATH" -C "$src"
 fi
-exec chezmoi init "$@" --apply
+exec chezmoi init "$@"
 '@
 
   Start-Step "Initializing chezmoi in WSL for '$UserName'"
   wsl -d $DistroName -u $UserName --exec bash -lc $chezmoiWslScript _ @chezmoiInitArgs
-  Complete-Step "chezmoi applied"
+  Complete-Step "chezmoi initialized in WSL"
 }
 
 Write-Progress -Id 0 -Activity "WSL bootstrap" -Completed
