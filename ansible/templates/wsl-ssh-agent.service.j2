@@ -8,7 +8,7 @@ Environment="SSH_AUTH_SOCK=%t/ssh-agent.sock"
 ExecStartPre=/bin/sh -c 'rm -rf ${SSH_AUTH_SOCK}'
 ExecStart=/usr/bin/socat \
   UNIX-LISTEN:${SSH_AUTH_SOCK},fork \
-  EXEC:"{{ npiperelay_bin }} -ei -s //./pipe/openssh-ssh-agent",nofork
+  EXEC:"/usr/local/bin/npiperelay -ei -s //./pipe/openssh-ssh-agent",nofork
 Restart=always
 RestartSec=2
 

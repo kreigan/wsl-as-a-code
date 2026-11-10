@@ -107,8 +107,17 @@
         label: "{{ item.dst }}"
 
     - name: Setup systemd service for npiperelay
-      when: npiperelay_bin | length > 0
       block:
+        - name: Make a link to npiperelay
+          ansible.builtin.file:
+            path: "/usr/local/bin/npiperelay"
+            src: "{{ npiperelay_bin }}"
+            state: link
+            owner: root
+            group: root
+            mode: '0755'
+          when: npiperelay_bin | length > 0
+
         - name: Deploy global user systemd service template for SSH agent relay
           ansible.builtin.template:
             src: wsl-ssh-agent.service.j2
@@ -126,6 +135,7 @@
             name: wsl-ssh-agent.service
             enabled: true
             scope: global
+          when: npiperelay_bin | length > 0
 
         - name: Add environment variable to user profile for SSH agent relay
           ansible.builtin.copy:
