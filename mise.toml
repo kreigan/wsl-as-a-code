@@ -1,7 +1,7 @@
 [vars]
 pkg_name = "wsl-bootstrapper"
 ansible_archive_name = "ansible"
-pkg_version = "0.1.0"
+pkg_version = "1.0.0"
 
 [tools]
 powershell-core = "latest"
