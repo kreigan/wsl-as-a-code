@@ -245,6 +245,8 @@ if (-not (Get-Command wsl -ErrorAction SilentlyContinue)) {
 }
 
 $ansibleArchivePath = Resolve-FilePath "ansible.tar.gz"
+
+$SkipChezmoiInit = $SkipWinChezmoiInit -and $SkipWslChezmoiInit
 if (-not $SkipChezmoiInit -and -not $DotfilesUrl) {
   $chezmoiArchivePath = Resolve-FilePath "dotfiles.zip"
 }
