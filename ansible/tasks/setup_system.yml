@@ -100,17 +100,3 @@
     group: root
     mode: '0755'
   when: onepassword_bin | length > 0
-
-- name: Download and install tunneller management tool
-  when: tunneller_url | length > 0
-  block:
-    - name: Download tunneller management tool
-      ansible.builtin.get_url:
-        url: "{{ tunneller_url }}"
-        dest: "/usr/local/bin/tunctl"
-        mode: '0755'
-
-    - name: Ensure tunneller is executable
-      ansible.builtin.file:
-        path: "/usr/local/bin/tunctl"
-        mode: '0755'
