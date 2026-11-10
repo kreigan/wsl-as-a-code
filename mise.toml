@@ -32,10 +32,11 @@ run = [
   "rm -rf dist",
   "mkdir -p dist",
   "git ls-files -z --cached --others --exclude-standard --full-name -- ansible | tar -czf dist/{{ vars.ansible_archive_name }}.tar.gz --null -T - --transform 's,^ansible/,,'",
+  "cp scripts/bootstrap.ps1 dist/",
   """
   v="{{ vars.pkg_version }}"
   [ -n "$RELEASE" ] || v="$v-dev+$(git rev-parse --short HEAD)$(git diff --quiet HEAD -- ansible || echo .dirty)"
-  (cd dist && zip "{{ vars.pkg_name }}.v$v.zip" {{ vars.ansible_archive_name }}.tar.gz)
+  (cd dist && zip "{{ vars.pkg_name }}.v$v.zip" *)
   """
 ]
 outputs = [ "dist" ]
