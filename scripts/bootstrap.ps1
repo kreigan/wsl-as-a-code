@@ -306,6 +306,9 @@ if (-not $SkipWinChezmoiInit -or -not $SkipWslChezmoiInit) {
 
 Start-Step "Installing Windows packages"
 
+# w/a https://github.com/PowerShell/PSResourceGet/issues/1965
+Get-PSResourceRepository | Out-Null
+
 # Silence module discovery/import noise even when -Verbose is on
 Set-PSResourceRepository -Name PSGallery -Trusted -Verbose:$false
 Install-PSResource -Name Microsoft.WinGet.Client -Quiet -WarningAction SilentlyContinue -Verbose:$false
