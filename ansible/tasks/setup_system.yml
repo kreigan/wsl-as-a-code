@@ -1,0 +1,102 @@
+---
+- name: Configure locale
+  block:
+    - name: Generate locale
+      community.general.locale_gen:
+        name: "{{ locale }}"
+        state: present
+
+    - name: Set locale environment variable
+      ansible.builtin.lineinfile:
+        path: /etc/environment
+        line: "LANG={{ locale }}"
+        state: present
+
+- name: Package management
+  block:
+    - name: Upgrade system packages
+      community.general.pacman:
+        update_cache: true
+        upgrade: true
+
+    - name: Install packages
+      community.general.pacman:
+        name: "{{ pkg_list | difference(excluded) }}"
+      vars:
+        pkg_list: "{{ packages.values() | flatten | unique }}"
+        excluded: "{{ (need_docker | ternary([], packages.docker)) }}"
+
+- name: Enable and start services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop: "{{ services | difference(excluded) }}"
+  vars:
+    excluded: >-
+      {{
+        (need_docker | ternary([], ['docker']))
+      }}
+
+- name: Allow shells
+  block:
+    - name: Check if shell is installed # noqa: command-instead-of-shell
+      ansible.builtin.shell: command -v "{{ item }}"
+      register: shell_path
+      changed_when: false
+      loop: "{{ allowed_shells }}"
+
+    - name: Add shell to /etc/shells
+      ansible.builtin.lineinfile:
+        path: /etc/shells
+        line: "{{ item.stdout }}"
+        state: present
+      when: item.rc == 0
+      loop: "{{ shell_path.results }}"
+
+- name: Apply WSL configuration
+  block:
+    - name: Create /etc/wsl.conf
+      ansible.builtin.copy:
+        dest: /etc/wsl.conf
+        content: "{{ wsl_conf ~ '\n' }}"
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: Fix binfmt
+      ansible.builtin.copy:
+        dest: /etc/binfmt.d/WSLInterop.conf
+        content: ":WSLInterop:M::MZ::/init:PF"
+        mode: '0644'
+        owner: root
+        group: root
+        attributes: +i
+
+    - name: Restart binfmt service
+      ansible.builtin.systemd:
+        name: systemd-binfmt
+        state: restarted
+
+- name: Create symlinks to significant Windows user folders
+  ansible.builtin.file:
+    path: "{{ item.dst }}"
+    src: "{{ item.src }}"
+    state: link
+  loop: "{{ wsl_links }}"
+  loop_control:
+    label: "{{ item.dst }}"
+
+- name: Setup systemd service for npiperelay
+  ansible.builtin.include_tasks: tasks/npiperelay.yml
+  when: npiperelay_bin | length > 0
+
+- name: Make a link to 1Password
+  ansible.builtin.file:
+    path: "/usr/local/bin/op"
+    src: "{{ onepassword_bin }}"
+    state: link
+    owner: root
+    group: root
+    mode: '0755'
+  when: onepassword_bin | length > 0

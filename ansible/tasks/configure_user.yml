@@ -1,0 +1,46 @@
+---
+- name: Get shell executable path # noqa: command-instead-of-shell
+  ansible.builtin.shell: "command -v {{ user_shell }}"
+  register: shell_path
+  changed_when: false
+  failed_when: shell_path.rc != 0
+
+- name: Create a new WSL user
+  ansible.builtin.user:
+    name: "{{ user_name }}"
+    uid: "{{ user_uid }}"
+    groups: wheel
+    append: true
+    create_home: true
+    password: "{{ user_password_hash }}"
+    shell: "{{ shell_path.stdout }}"
+
+- name: Add user to docker group if Docker is installed
+  ansible.builtin.user:
+    name: "{{ user_name }}"
+    groups: docker
+    append: true
+  when: "'docker' in ansible_facts['packages']"
+
+- name: Configure sudoers for the WSL user
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/{{ user_name }}"
+    content: "{{ user_name }} ALL=(ALL) NOPASSWD: ALL"
+    owner: root
+    group: root
+    mode: '0440'
+
+- name: Set as default WSL user
+  community.general.ini_file:
+    path: /etc/wsl.conf
+    section: user
+    option: default
+    value: "{{ user_name }}"
+    mode: '0644'
+    owner: root
+    group: root
+
+- name: Enable lingering
+  ansible.builtin.command:
+    cmd: "loginctl enable-linger {{ user_name }}"
+    creates: "/var/lib/systemd/linger/{{ user_name }}"

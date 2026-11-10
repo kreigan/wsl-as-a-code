@@ -1,0 +1,31 @@
+---
+- name: Configure zsh on-demand rehash
+  become: true
+  block:
+    - name: Create pacman hooks directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /etc/pacman.d/hooks
+        - /var/cache/zsh
+
+    - name: Create pacman hook for zsh on-demand rehash
+      ansible.builtin.copy:
+        dest: /etc/pacman.d/hooks/zsh-rehash.hook
+        content: |
+          [Trigger]
+          Operation = Install
+          Operation = Upgrade
+          Operation = Remove
+          Type = Path
+          Target = usr/bin/*
+          Target = usr/local/bin/*
+
+          [Action]
+          Description=Rehash executables
+          Depends = zsh
+          When = PostTransaction
+          Exec = /usr/bin/install -Dm644 /dev/null /var/cache/zsh/pacman
+        mode: '0644'

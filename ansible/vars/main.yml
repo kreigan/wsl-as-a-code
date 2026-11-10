@@ -1,23 +1,67 @@
-config_dir: .config
+locale: "en_US.UTF-8"
 
-bashrcd_sys_dir: /etc/bash.bashrc.d
-bashrcd_user_dir: "{{ config_dir }}/bashrc.d"
+packages:
+  essential_packages:
+    - base-devel
+    - chezmoi
+    - curl
+    - git
+    - inetutils
+    - iproute2
+    - jq
+    - less
+    - man-db
+    - man-pages
+    - mise
+    - moreutils
+    - openssh
+    - rsync
+    - socat
+    - unzip
+    - uv
+    - vim
+    - wget
+    - yq
+    - zip
 
-zshrcd_sys_dir: /etc/zsh/zshrc.d
-zshrcd_user_dir: "{{ config_dir }}/zshrc.d"
+  docker:
+    - docker
+    - docker-buildx
+    - docker-compose
 
-wsl_rootfs_path: /mnt
-wsl_config: |
+  shells:
+    - bash
+    - nushell
+    - zsh
+
+services:
+  - docker
+
+user_uid: 1000
+
+wsl_mount_options:
+  - metadata
+  - uid={{ user_uid }}
+
+wsl_conf: |
   [boot]
   systemd=true
+  initTimeout = 30000
 
   [automount]
-  options = "metadata"
+  options = "{{ wsl_mount_options | join(',') }}"
 
-  [interop]
-  appendWindowsPath = false
+# For this to work, run this in PowerShell and start a new WSL session:
+#   set WSLENV "USERPROFILE/p:APPDATA/p:OneDrive/p"
+win_user_profile: "{{ ansible_facts['env']['USERPROFILE'] }}"
+win_appdata: "{{ ansible_facts['env']['APPDATA'] }}"
+win_onedrive_folder: "{{ ansible_facts['env']['OneDrive'] }}"
 
-operational_packages:
-  - csvtool
-  - dos2unix
-  - rename
+wsl_links:
+  - { src: "{{ win_user_profile }}", dst: "/wusr" }
+  - { src: "{{ win_appdata }}", dst: "/appdata" }
+  - { src: "{{ win_onedrive_folder }}", dst: "/1drv" }
+  - { src: "/wusr/Downloads", dst: "/downloads" }
+  - { src: "/1drv/Documents", dst: "/documents" }
+
+allowed_shells: "{{ packages.shells | map('replace', 'nushell', 'nu') | list }}"

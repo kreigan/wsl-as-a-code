@@ -1,0 +1,6 @@
+---
+- name: Run shell configuration tasks
+  ansible.builtin.include_tasks: "{{ shell }}"
+  loop: "{{ q('ansible.builtin.fileglob', 'tasks/bootstrap/shells/*') }}"
+  loop_control:
+    loop_var: shell

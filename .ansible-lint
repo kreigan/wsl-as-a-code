@@ -1,4 +1,3 @@
 ---
 exclude_paths:
-  - .ansible-lint
-  - config.yml
+  - tests/molecule/resources/inventory.yml
